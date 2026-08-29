@@ -1,0 +1,34 @@
+[
+  {
+    "document_id": "59e0cbe4-ca62-444c-9375-86e3f06c15f6",
+    "filename": "python.pdf",
+    "source": "pdf",
+    "category": "AI",
+    "indexed_at": "2026-08-24T10:41:01.326127",
+    "chunks": 20
+  },
+  {
+    "document_id": "7b48fe74-6dff-46a1-9696-289ae10fc752",
+    "filename": "rag.pdf",
+    "source": "pdf",
+    "category": "AI",
+    "indexed_at": "2026-08-24T10:41:01.326160",
+    "chunks": 20
+  },
+  {
+    "document_id": "de735d22-69c7-4b1a-8753-adb189ca5dd4",
+    "filename": "ml.pdf",
+    "source": "pdf",
+    "category": "AI",
+    "indexed_at": "2026-08-24T10:41:01.326171",
+    "chunks": 20
+  },
+  {
+    "document_id": "98ef44c7-cd74-4116-b7e9-0152b31de2e5",
+    "filename": "fastapi.pdf",
+    "source": "pdf",
+    "category": "Backend",
+    "indexed_at": "2026-08-24T10:41:01.551514",
+    "chunks": 35
+  }
+]

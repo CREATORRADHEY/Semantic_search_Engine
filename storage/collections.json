@@ -1,0 +1,14 @@
+{
+  "AI": {
+    "namespace": "AI",
+    "description": null
+  },
+  "Python": {
+    "namespace": "Python",
+    "description": "Python programming books"
+  },
+  "Finance": {
+    "namespace": "Finance",
+    "description": "Finance and Insurance knowledge"
+  }
+}

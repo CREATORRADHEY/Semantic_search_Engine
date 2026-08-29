@@ -1,0 +1,13 @@
+# Environment Secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# FAISS Indexes
+*.index
+
+# Cached Models
+.cache/
