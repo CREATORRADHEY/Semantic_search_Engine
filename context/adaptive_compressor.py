@@ -1,40 +1,44 @@
-from compression.sentence_scorer import SentenceScorer
+from context.extractive_compressor import ExtractiveCompressor
 
 
 class AdaptiveCompressor:
+    """
+    Adaptive compressor compatible with both old and new APIs.
+    """
 
     def __init__(self):
-
-        self.scorer = SentenceScorer()
-
-    def estimate_tokens(self, text: str):
-
-        return max(1, len(text.split()))
+        self.extractive = ExtractiveCompressor()
 
     def compress(
         self,
-        query: str,
-        text: str,
-        max_tokens: int = 120
+        context=None,
+        max_sentences=6,
+        query=None,
+        text=None,
+        max_tokens=None,
     ):
+        """
+        Supports:
 
-        ranked = self.scorer.score(query, text)
+        OLD:
+            compress(query=..., text=..., max_tokens=...)
 
-        compressed = []
+        NEW:
+            compress(context, max_sentences=...)
+        """
 
-        used_tokens = 0
+        # Backward compatibility
+        if text is not None:
+            context = text
 
-        for score, sentence in ranked:
+            if max_tokens is not None:
+                max_sentences = max(1, max_tokens // 5)
 
-            sentence_tokens = self.estimate_tokens(sentence)
+        if context is None:
+            return ""
 
-            if used_tokens + sentence_tokens > max_tokens:
-                continue
-
-            compressed.append((sentence, score))
-
-            used_tokens += sentence_tokens
-
-        compressed.sort(key=lambda x: text.index(x[0]))
-
-        return " ".join(sentence for sentence, _ in compressed)
+        return self.extractive.compress(
+            query=query or "",
+            context=context,
+            top_k=max_sentences,
+        )

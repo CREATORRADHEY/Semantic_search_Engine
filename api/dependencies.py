@@ -1,78 +1,54 @@
-from llm.mock_llm import MockLLM
-
 from app.rag_engine import RAGEngine
+
+from llm.mock_llm import MockLLM
 
 from context.context_builder import ContextBuilder
 from context.prompt_builder import PromptBuilder
+from context.token_budget import TokenBudgetManager
 
 from memory.conversation_memory import ConversationMemory
-
-from retrieval.query_expansion import QueryExpander
-from retrieval.multi_query_hybrid import MultiQueryHybridRetriever
-
-from embeddings.sentence_transformer_embedder import SentenceTransformerEmbedder
 from memory.memory_manager import MemoryManager
 
-memory_manager = MemoryManager()
+from knowledge_base.manager import KnowledgeBaseManager
 
-# -----------------------------------------------------
-# Shared Components
-# -----------------------------------------------------
+from retrieval.query_expansion import QueryExpander
+from embeddings.sentence_transformer_embedder import (
+    SentenceTransformerEmbedder,
+)
+
+
+class EmptyRetriever:
+
+    def search(self, query, top_k=5):
+        return []
+
 
 embedder = SentenceTransformerEmbedder()
 
 query_expander = QueryExpander(
     expansions={
-        "car insurance": [
-            "vehicle insurance",
-            "automobile insurance",
-        ],
-        "AI systems": [
-            "artificial intelligence systems",
-            "machine intelligence systems",
-        ],
         "semantic search": [
             "semantic retrieval",
-            "semantic information retrieval",
+            "vector search",
+        ],
+        "AI": [
+            "artificial intelligence",
+            "machine intelligence",
         ],
     }
 )
 
-context_builder = ContextBuilder()
-prompt_builder = PromptBuilder()
-memory = ConversationMemory()
-
-
-# -----------------------------------------------------
-# Temporary Retriever (Chapter 46)
-# -----------------------------------------------------
-
-retriever = MultiQueryHybridRetriever(
-    bm25_retriever=None,
-    faiss_retriever=None,
-    query_expander=query_expander,
-    embedder=embedder,
-)
-
-
-# -----------------------------------------------------
-# Singleton RAG Engine
-# -----------------------------------------------------
-
-from memory.memory_manager import MemoryManager
-
-memory_manager = MemoryManager()
-
 rag_engine = RAGEngine(
-    retriever=retriever,
+    retriever=EmptyRetriever(),
     llm=MockLLM(),
-    context_builder=context_builder,
-    prompt_builder=prompt_builder,
-    token_budget=None,
-    memory=memory,
-    memory_manager=memory_manager
+    context_builder=ContextBuilder(),
+    prompt_builder=PromptBuilder(),
+    token_budget=TokenBudgetManager(),
+    memory=ConversationMemory(),
+    memory_manager=MemoryManager(),
+    knowledge_manager=KnowledgeBaseManager(),
 )
+
 
 def get_rag_engine():
     return rag_engine
-

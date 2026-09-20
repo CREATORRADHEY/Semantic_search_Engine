@@ -1,67 +1,58 @@
 import faiss
 import numpy as np
 
-from memory.memory_record import MemoryRecord
-
 
 class MemoryVectorStore:
-    """
-    FAISS vector database dedicated to conversation memories.
-    """
 
     def __init__(self):
+
+        self.records = []
+        self.dimension = None
         self.index = None
-        self.records: list[MemoryRecord] = []
 
-    def _create_index(self, dimension: int):
-        self.index = faiss.IndexFlatIP(dimension)
+    # -----------------------------
 
-    def add(self, record: MemoryRecord):
+    def _ensure_index(self, dimension):
 
         if self.index is None:
-            self._create_index(len(record.embedding))
+            self.dimension = dimension
+            self.index = faiss.IndexFlatIP(dimension)
 
-        vector = np.array([record.embedding], dtype=np.float32)
+    # -----------------------------
 
-        faiss.normalize_L2(vector)
+    def add(self, record):
 
-        self.index.add(vector)
+        embedding = np.array(
+            record.embedding,
+            dtype=np.float32,
+        ).reshape(1, -1)
+
+        self._ensure_index(embedding.shape[1])
+
+        faiss.normalize_L2(embedding)
+
+        self.index.add(embedding)
 
         self.records.append(record)
 
-    def add_batch(self, records: list[MemoryRecord]):
+    # -----------------------------
 
-        if not records:
-            return
+    def search(self, query_embedding, top_k=3):
 
-        if self.index is None:
-            self._create_index(len(records[0].embedding))
-
-        vectors = np.array(
-            [record.embedding for record in records],
-            dtype=np.float32,
-        )
-
-        faiss.normalize_L2(vectors)
-
-        self.index.add(vectors)
-
-        self.records.extend(records)
-
-    def search(
-        self,
-        query_embedding: list[float],
-        top_k: int = 3,
-    ) -> list[tuple[float, MemoryRecord]]:
-
-        if self.index is None:
+        if self.index is None or len(self.records) == 0:
             return []
 
-        query = np.array([query_embedding], dtype=np.float32)
+        query = np.array(
+            query_embedding,
+            dtype=np.float32,
+        ).reshape(1, -1)
 
         faiss.normalize_L2(query)
 
-        scores, indices = self.index.search(query, top_k)
+        scores, indices = self.index.search(
+            query,
+            min(top_k, len(self.records)),
+        )
 
         results = []
 
@@ -70,15 +61,24 @@ class MemoryVectorStore:
             if idx == -1:
                 continue
 
+            if idx >= len(self.records):
+                continue
+
             results.append(
-                (
-                    float(score),
-                    self.records[idx]
-                )
+                (float(score), self.records[idx])
             )
 
         return results
 
+    # -----------------------------
+
     def count(self):
 
         return len(self.records)
+
+    def clear(self):
+
+        self.records.clear()
+
+        if self.dimension is not None:
+            self.index = faiss.IndexFlatIP(self.dimension)

@@ -1,17 +1,18 @@
 class MemoryCompressor:
-
-    def estimate_tokens(self, text):
-
-        return max(1, len(text.split()))
+    """
+    Compresses conversation memories into a compact prompt block.
+    """
 
     def compress(
         self,
         memories,
-        max_tokens=150
-    ):
+        max_tokens: int = 150,
+    ) -> str:
+
+        if not memories:
+            return ""
 
         compressed = []
-
         used_tokens = 0
 
         for memory in memories:
@@ -21,13 +22,12 @@ class MemoryCompressor:
                 f"Assistant: {memory.assistant_message}"
             )
 
-            tokens = self.estimate_tokens(text)
+            tokens = len(text.split())
 
             if used_tokens + tokens > max_tokens:
-                continue
+                break
 
             compressed.append(text)
-
             used_tokens += tokens
 
         return "\n\n".join(compressed)

@@ -1,46 +1,44 @@
-class TokenBudgetManager:
+class TokenBudget:
     """
-    Simple token budget estimator.
+    Simple token budget manager used by the RAG engine.
 
-    Uses a character-to-token approximation.
-    We'll replace this with exact tokenizers
-    in Chapter 41.
+    We approximate tokens using whitespace-separated words so the
+    project works without requiring a tokenizer dependency.
     """
 
-    def __init__(
-        self,
-        max_tokens: int = 3000,
-        chars_per_token: int = 4
-    ):
-
+    def __init__(self, max_tokens: int = 1200):
         self.max_tokens = max_tokens
-        self.chars_per_token = chars_per_token
 
-    def estimate_tokens(
-        self,
-        text: str
-    ) -> int:
+    def estimate_tokens(self, text: str) -> int:
+        if not text:
+            return 0
+        return len(text.split())
 
-        return max(
-            1,
-            len(text) // self.chars_per_token
-        )
+    def trim_context(self, context: str) -> str:
+        if not context:
+            return ""
 
-    def trim_context(
-        self,
-        context: str
-    ) -> str:
+        words = context.split()
 
-        estimated_tokens = self.estimate_tokens(
-            context
-        )
-
-        if estimated_tokens <= self.max_tokens:
+        if len(words) <= self.max_tokens:
             return context
 
-        max_characters = (
-            self.max_tokens *
-            self.chars_per_token
-        )
+        return " ".join(words[: self.max_tokens])
 
-        return context[:max_characters]
+    def remaining_budget(self, prompt: str) -> int:
+        used = self.estimate_tokens(prompt)
+        return max(self.max_tokens - used, 0)
+
+    def fits(self, prompt: str, context: str) -> bool:
+        total = (
+            self.estimate_tokens(prompt)
+            + self.estimate_tokens(context)
+        )
+        return total <= self.max_tokens
+
+
+class TokenBudgetManager(TokenBudget):
+    """
+    Backward-compatible alias used by the unit tests.
+    """
+    pass

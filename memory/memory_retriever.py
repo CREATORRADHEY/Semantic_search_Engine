@@ -1,15 +1,15 @@
 from datetime import datetime
 
-from memory.memory_manager import MemoryManager
+from memory.memory_record import MemoryRecord
 
 
 class MemoryRetriever:
     """
-    Production memory retrieval with ranking, recency bonus,
-    metadata filtering, deduplication, and optional thresholding.
+    Retrieves relevant memories with similarity ranking,
+    metadata filtering, recency bonus and deduplication.
     """
 
-    def __init__(self, manager: MemoryManager):
+    def __init__(self, manager):
         self.manager = manager
 
     def retrieve(
@@ -19,7 +19,6 @@ class MemoryRetriever:
         similarity_threshold: float | None = 0.20,
         metadata_filter: dict | None = None,
     ):
-
         candidates = self.manager.search(
             query=query,
             top_k=20,
@@ -29,24 +28,23 @@ class MemoryRetriever:
         seen = set()
         now = datetime.now()
 
-        # Iterate over retrieved memories
         for similarity, memory in candidates:
 
-            # Skip duplicate memories
+            if not isinstance(memory, MemoryRecord):
+                continue
+
             if memory.memory_id in seen:
                 continue
 
             seen.add(memory.memory_id)
 
-            # Optional similarity threshold
             if (
                 similarity_threshold is not None
                 and similarity < similarity_threshold
             ):
                 continue
 
-            # Optional metadata filtering
-            if metadata_filter is not None:
+            if metadata_filter:
                 matched = all(
                     memory.metadata.get(key) == value
                     for key, value in metadata_filter.items()
@@ -55,21 +53,26 @@ class MemoryRetriever:
                 if not matched:
                     continue
 
-            # Recency bonus (last 7 days)
-            created = datetime.fromisoformat(memory.created_at)
-            age_hours = (now - created).total_seconds() / 3600
+            created_at = memory.created_at
 
-            recency_bonus = max(
-                0,
-                1 - age_hours / 168,
+            if isinstance(created_at, str):
+                try:
+                    created_at = datetime.fromisoformat(created_at)
+                except Exception:
+                    created_at = now
+
+            age_seconds = max(
+                (now - created_at).total_seconds(),
+                1,
             )
 
-            final_score = (
-                similarity * 0.85
-                + recency_bonus * 0.15
-            )
+            recency_bonus = 1 / (1 + age_seconds / 86400)
 
-            ranked.append((final_score, memory))
+            final_score = similarity + recency_bonus * 0.05
+
+            ranked.append(
+                (final_score, memory)
+            )
 
         ranked.sort(
             key=lambda x: x[0],

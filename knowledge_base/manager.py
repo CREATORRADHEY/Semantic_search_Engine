@@ -1,3 +1,4 @@
+from pathlib import Path
 from uuid import uuid4
 from datetime import datetime, UTC
 
@@ -10,32 +11,33 @@ from storage.faiss_storage import FAISSStorage
 
 
 class KnowledgeBaseManager:
-    """
-    Enterprise Knowledge Base Manager.
-
-    Responsible for:
-    - Registering indexed documents.
-    - Saving/loading registry.
-    - Listing documents.
-    """
 
     def __init__(self):
+
         self.registry = KnowledgeRegistry()
+
         self.storage = FAISSStorage()
+
+    # -----------------------------------------
 
     def register_document(
         self,
         document,
-        chunk_count: int,
-        category: str = "general",
+        chunk_count,
+        category="general",
     ):
-        document_id = getattr(document, "document_id", str(uuid4()))
+
+        document_id = getattr(
+            document,
+            "document_id",
+            str(uuid4()),
+        )
 
         filename = getattr(document, "filename", None)
         source = getattr(document, "source", None)
 
         if filename is None:
-            filename = document.name
+            filename = Path(document).name
 
         if source is None:
             source = str(document)
@@ -50,24 +52,34 @@ class KnowledgeBaseManager:
         )
 
         self.registry.add(entry)
+
         return document_id
 
-    def list_documents(self):
-        return self.registry.all()
+    # -----------------------------------------
 
     def save_registry(self, path):
+
         data = [
             entry.model_dump()
             for entry in self.registry.all()
         ]
+
         self.storage.save_json(data, path)
 
     def load_registry(self, path):
+
         data = self.storage.load_json(path)
 
-        # IMPORTANT: Registry uses a dictionary.
-        self.registry.clear()
+        self.registry = KnowledgeRegistry()
 
         for item in data:
-            entry = DocumentRegistryEntry(**item)
-            self.registry.add(entry)
+
+            self.registry.add(
+                DocumentRegistryEntry(**item)
+            )
+
+    # -----------------------------------------
+
+    def list_documents(self):
+
+        return self.registry.all()

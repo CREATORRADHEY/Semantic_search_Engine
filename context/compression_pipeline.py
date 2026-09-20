@@ -1,38 +1,69 @@
-from context.adaptive_compressor import AdaptiveCompressor
 from context.memory_compressor import MemoryCompressor
+from context.extractive_compressor import ExtractiveCompressor
+from context.adaptive_compressor import AdaptiveCompressor
 
 
 class CompressionPipeline:
+    """
+    Enterprise Compression Pipeline.
+
+    Compatible with both legacy tests and the new RAG engine.
+    """
 
     def __init__(self):
-
+        self.memory_compressor = MemoryCompressor()
+        self.extractive = ExtractiveCompressor()
         self.adaptive = AdaptiveCompressor()
-
-        self.memory = MemoryCompressor()
 
     def compress(
         self,
-        query,
-        memory_records,
-        knowledge_context,
-        memory_budget=150,
-        knowledge_budget=800
+        context=None,
+        question=None,
+        max_sentences=6,
+        query=None,
+        memory_records=None,
+        knowledge_context=None,
     ):
+        """
+        NEW API
+            compress(context=..., question=...)
 
-        compressed_memory = self.memory.compress(
-            memory_records,
-            max_tokens=memory_budget
+        OLD API
+            compress(
+                query=...,
+                memory_records=...,
+                knowledge_context=...
+            )
+        """
+
+        # Legacy API support
+        if knowledge_context is not None:
+            question = query
+
+            memory_context = self.memory_compressor.compress(
+                memory_records or [],
+                max_tokens=150,
+            )
+
+            context = (
+                memory_context
+                + "\n\n"
+                + knowledge_context
+            )
+
+        if context is None:
+            return ""
+
+        compressed = self.extractive.compress(
+            query=question or "",
+            context=context,
+            top_k=max_sentences,
         )
 
-        compressed_knowledge = self.adaptive.compress(
-            query=query,
-            text=knowledge_context,
-            max_tokens=knowledge_budget
+        compressed = self.adaptive.compress(
+            context=compressed,
+            query=question,
+            max_sentences=max_sentences,
         )
 
-        return (
-            "## Conversation Memory\n"
-            f"{compressed_memory}\n\n"
-            "## Knowledge Context\n"
-            f"{compressed_knowledge}"
-        )
+        return compressed

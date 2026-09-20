@@ -1,73 +1,75 @@
-from fastapi import APIRouter, Depends
-
-from api.schemas import (
-    ChatRequest,
-    SearchRequest,
-    IndexRequest,
-    HealthResponse,
-    SearchResponse
-)
+from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 
 from api.dependencies import get_rag_engine
 
 router = APIRouter()
 
+rag_engine = get_rag_engine()
 
-@router.get("/health", response_model=HealthResponse)
-async def health():
-    return HealthResponse(
-        status="healthy",
-        version="11.0"
-    )
+
+@router.get("/health")
+def health():
+
+    return {
+        "status": "healthy"
+    }
 
 
 @router.post("/chat")
-async def chat(
-    request: ChatRequest,
-    engine=Depends(get_rag_engine)
-):
-    answer = engine.ask(request.question)
+def chat(request: dict):
 
-    return answer
+    response = rag_engine.ask(
+        request["question"]
+    )
+
+    return response.model_dump()
+
+
+@router.post("/stream-chat")
+def stream_chat(request: dict):
+
+    question = request["question"]
+
+    generator = rag_engine.stream_answer(question)
+
+    return StreamingResponse(
+        generator,
+        media_type="text/plain"
+    )
 
 
 @router.post("/search")
-async def search(
-    request: SearchRequest,
-    engine=Depends(get_rag_engine)
-):
-    results = engine.retriever.search(
-        request.query,
-        top_k=request.top_k
+def search(request: dict):
+
+    results = rag_engine.retriever.search(
+        request["query"]
     )
 
-    response = []
-
-    for result in results:
-        response.append(
-            SearchResponse(
-                score=result.score,
-                text=result.text,
-                source=result.metadata["source"]
-            )
-        )
-
-    return response
+    return [
+        item.model_dump()
+        for item in results
+    ]
 
 
 @router.get("/documents")
-async def documents(
-    engine=Depends(get_rag_engine)
-):
-    return engine.retriever.knowledge_base.list_documents()
+def documents():
+
+    docs = rag_engine.knowledge_manager.list_documents()
+
+    return [
+        item.filename
+        for item in docs
+    ]
 
 
 @router.post("/index")
-async def index_document(
-    request: IndexRequest,
-    engine=Depends(get_rag_engine)
-):
+def index(request: dict):
+
+    rag_engine.knowledge_manager.index_pdf(
+        request["filename"]
+    )
+
     return {
-        "message": f"Indexed {request.file_path}",
-        "category": request.category
+        "message": "Indexed Successfully."
     }
